@@ -9,6 +9,7 @@ using RCall
 @everywhere using SharedArrays
 @everywhere using LinearAlgebra
 @everywhere using Arpack
+@everywhere using Distances
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/probaltcalc.jl")
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/ksim.jl")
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/dailysim.jl")
@@ -229,22 +230,22 @@ end
 
 # Either take mean of individuals or the single rep
 if reps > 1
-    mns = mean(ns,dims=1)[1,:,:];
-    mcvec = mean(cvec,dims=1)[1,:,:];
-    mcvec_wks = mean(cvec_wks,dims=1)[1,:,:];
-    mdailyreturn = mean(dailyreturn,dims=1)[1,:,:];
-else 
     mns = ns[1,:,:];
     mcvec = cvec[1,:,:];
     mcvec_wks = cvec_wks[1,:,:];
     mdailyreturn = dailyreturn[1,:,:];
+else 
+    mns = mean(ns,dims=1)[1,:,:];
+    mcvec = mean(cvec,dims=1)[1,:,:];
+    mcvec_wks = mean(cvec_wks,dims=1)[1,:,:];
+    mdailyreturn = mean(dailyreturn,dims=1)[1,:,:];
 end
 
 
 
 
 fitness = vec(std(mdailyreturn,dims=2) ./ mean(mdailyreturn,dims=2));
-
+# nitrofitness = xxx
 
 # cvec_wks = cvec_wks[:,338:(337*2)];
 
@@ -263,7 +264,6 @@ PCalt = Array{Float64}(undef,nc,nc);
     b = Int64(floor(i/nc)) + 1;
     if a == b
         PC[a,b] = 0.0;
-        PCalt[a,b] = 0.0;
         continue
     end
     #alternative - compare matrices
@@ -278,7 +278,7 @@ PCalt = Array{Float64}(undef,nc,nc);
         
         # global ct += log(minimum([mcvec_wks[a,j],mcvec_wks[b,j]])/maximum([mcvec_wks[a,j],mcvec_wks[b,j]]));
         # different needs to be 0; same needs to be 1
-        global ct += 1 - (sqrt((cvec_wksinds[a,j] - cvec_wksinds[b,j])^2))
+        global ct += log(1 - (sqrt((mcvec_wks[a,j] - mcvec_wks[b,j])^2)));
 
         # global ct += (sqrt((cvec[a,j] - cvec[b,j])^2));
         # global ct += (sqrt((mcvec_wks[a,j] - mcvec_wks[b,j])^2))
@@ -286,16 +286,17 @@ PCalt = Array{Float64}(undef,nc,nc);
         
     end
     # ctscaled = (ctones - ct)/ctones;
-    ctscaled = (ct)/ctones;
+    ctscaled = exp((ct)/ctones);
     PC[a,b] = Float64(ctscaled); #/Float64(ctones);s
 
-    # PCalt[a,b] = mean(dist_m1m2);
+    PCalt[a,b] = mean(dist_m1m2);    
 end
+PCalt[diagind(PCalt)].=0.0
 
-S = laplacian(PC,10);
+S = laplacian(PC.+0.00001,10);
 ev = eigs(S; nev=10,which=:SR);
-evalues = ev[1];
-evecs = ev[2];
+evalues = (ev[1]);
+evecs = (ev[2]);
 
 ranked = sortperm(evecs[:,2]);
 
@@ -305,7 +306,7 @@ resnames = ["GEN";rdata[!,:kartez]];
 # scatterplot(evecs[:,2],evecs[:,3])
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/consumer_ensilica_DM2.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumer_ensilica_DM2.pdf";
 
 R"""
 library(RColorBrewer)
@@ -323,8 +324,8 @@ for (i in 1:length($tid)) {
     }
 }
 pdf($namespace,width=6,height=6)
-plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3')
-legend(0.15,0.0,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
+legend(-0.4,0.0,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
 dev.off()
 """
 
