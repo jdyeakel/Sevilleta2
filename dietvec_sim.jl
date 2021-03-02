@@ -293,20 +293,22 @@ PCalt = Array{Float64}(undef,nc,nc);
 end
 PCalt[diagind(PCalt)].=0.0
 
-S = laplacian(PC.+0.00001,10);
+S = laplacian(PCalt,10);
 ev = eigs(S; nev=10,which=:SR);
 evalues = (ev[1]);
 evecs = (ev[2]);
 
 ranked = sortperm(evecs[:,2]);
 
-ecluster = eigencluster(collect(1:nc),evecs,4);
+ecluster = eigencluster(collect(1:nc),evecs,3);
 resnames = ["GEN";rdata[!,:kartez]];
+# TO compare with tinfo
+rn = rdata[!,:kartez];
 
 # scatterplot(evecs[:,2],evecs[:,3])
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumer_ensilica_DM2.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_2_3.pdf";
 
 R"""
 library(RColorBrewer)
@@ -325,12 +327,13 @@ for (i in 1:length($tid)) {
 }
 pdf($namespace,width=6,height=6)
 plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
-legend(-0.4,0.0,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+points($(evecs[:,2][1]),$(evecs[:,3][1]),pch=21,bg=palalpha[1],col=palalpha[1])
+legend(0.8,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
 dev.off()
 """
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/consumer_ensilica_DM22.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_3_4.pdf";
 
 R"""
 library(RColorBrewer)
@@ -349,7 +352,8 @@ for (i in 1:length($tid)) {
 }
 pdf($namespace,width=6,height=6)
 plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4')
-legend(0.15,0.0,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+points($(evecs[:,3][1]),$(evecs[:,4][1]),pch=21,bg=palalpha[1],col=palalpha[1])
+legend(0.4,0.6,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
 dev.off()
 """
 
@@ -379,7 +383,7 @@ dev.off()
 
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/consumer_fitness_DM2.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/efitnesseigen_2_3.pdf";
 R"""
 library(RColorBrewer)
 fitness = floor($((fitness)) * 100)
@@ -392,7 +396,7 @@ dev.off()
 """
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/consumer_fitness_DM22.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/efitnesseigen_3_4.pdf";
 R"""
 library(RColorBrewer)
 fitness = floor($((fitness)) * 100)
@@ -403,6 +407,19 @@ plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=pal[fitness],col=pal[fitness],xlab='L
 legend(0.10,0.0,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
 dev.off()
 """
+
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/efitnesseigen_4_5.pdf";
+R"""
+library(RColorBrewer)
+fitness = floor($((fitness)) * 100)
+fitleg = seq(1,max(fitness),10)
+pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness))
+pdf($namespace,width=6,height=6)
+plot($(evecs[:,4]),$(evecs[:,5]),pch=21,bg=pal[fitness],col=pal[fitness],xlab='Laplacian eigenvec 4',ylab='Laplacian eigenvec 5')
+legend(0.10,0.0,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
+dev.off()
+"""
+
 
 
 #3D plot with plotly
