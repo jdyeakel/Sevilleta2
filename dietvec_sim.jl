@@ -26,9 +26,23 @@ mass = 100.; #mass of rodent
 # m_ghc_spring = [9920,1240,620,78,3400]; #s
 
 #Load in empirical data
-rdata = CSV.read("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/rdata.csv",header=true);
-m_ghc_fall = rdata[!,:Fall_Mean];
-m_ghc_spring = rdata[!,:Spring_Mean];
+rdata = CSV.read("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/rdata2.csv",header=true);
+
+
+#Subselect Perennials
+m_ghc_fall = rdata[rdata.LifeHistory .== "Perennial",:Fall_Mean];
+m_ghc_spring = rdata[rdata.LifeHistory .== "Perennial",:Spring_Mean];
+
+#Grab Nitrogen Concentration
+nconc = rdata[rdata.LifeHistory .== "Perennial",:Mean_N];
+
+# #Subselect Annuals
+# rdata2[rdata2[!,:LifeHistory] .== "Annuals",:Spring_Mean]
+
+# m_ghc_fall = rdata[!,:Fall_Mean];
+# m_ghc_spring = rdata[!,:Spring_Mean];
+
+
 mseasons = DataFrame([m_ghc_spring,m_ghc_fall],[:spring, :fall]);
 
 #number of resources
