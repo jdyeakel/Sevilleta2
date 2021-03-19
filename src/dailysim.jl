@@ -1,4 +1,4 @@
-function dailysim(nr,alpha,c,ht,catchsuccess,res_kjg,velocity,tmax_bout,configurations,tid,tweight,target)
+function dailysim(nr,alpha,c,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,target)
         
     alpha = Array(alpha);
     c = Array(c);
@@ -94,11 +94,12 @@ function dailysim(nr,alpha,c,ht,catchsuccess,res_kjg,velocity,tmax_bout,configur
     end
 
     total_kilojoules=dot((res_kjg),number_of_successes);
+    total_nitrogen = dot(nconc,number_of_successes);
     
 
     propres = ((res_kjg).*number_of_successes);
     # propres = propres ./ sum(propres);
 
-    return(total_kilojoules,propres,number_of_successes);
+    return(total_kilojoules,total_nitrogen,propres,number_of_successes);
 
 end
