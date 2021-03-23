@@ -81,13 +81,13 @@ nconc_sd = [std(df_array[i].Mean_N[findall(!ismissing,df_array[i].Mean_N)]) for 
 # m_ghc_spring = rdata[!,:Spring_Mean];
 
 
-mseasons = DataFrame([m_ghc_spring,m_ghc_fall],[:spring, :fall]);
+# mseasons = DataFrame([m_ghc_spring,m_ghc_fall],[:spring, :fall]);
 
 #number of resources
 nr = length(m_ghc_fall);
-alpha_fall = repeat([10.],outer=nr);
-alpha_spring = repeat([10.],outer=nr);
-alphaseasons = DataFrame([alpha_spring,alpha_fall],[:spring, :fall]);
+# alpha_fall = repeat([10.],outer=nr);
+# alpha_spring = repeat([10.],outer=nr);
+# alphaseasons = DataFrame([alpha_spring,alpha_fall],[:spring, :fall]);
 
 
 # #poor - rich
@@ -119,32 +119,62 @@ ht = repeat([0.0],outer=nr);
 activehours = 5;
 tmax_bout = activehours*60*60;
 
+# m_ghc_fall = Array(mseasons[!,:fall]);
+# m_ghc_spring = Array(mseasons[!,:spring]);
+# alpha_fall = Array(alphaseasons[!,:fall]);
+# alpha_spring = Array(alphaseasons[!,:spring]);
+
 #Standard homerange
 areascaling = 0.75;
 A0 = 100;
 homerange = A0*mass^(areascaling); #square meters
 perchect = homerange/10000; #homerange to percent of a hectare (=10,000 m^2)
 
-
-m_ghc_fall = Array(mseasons[!,:fall]);
-m_ghc_spring = Array(mseasons[!,:spring]);
-alpha_fall = Array(alphaseasons[!,:fall]);
-alpha_spring = Array(alphaseasons[!,:spring]);
-  
 #grams per homerange
-m_gs_fall = m_ghc_fall .* perchect;
-m_gs_spring = m_ghc_spring .* perchect;
+# m_gs_fall = m_ghc_fall .* perchect;
+# m_gs_spring = m_ghc_spring .* perchect;
 
 #Scale m
-mscale = .1;
-m_fall = mscale*m_gs_fall;
-m_spring = mscale*m_gs_spring;
+mscale = 1;
+
+#Total adjustment
+scaleadj = mscale*perchect;
+
+# m_fall = mscale*m_gs_fall;
+# m_spring = mscale*m_gs_spring;
+
+#Estimate mean and variance of subgroups
+m_fall = scaleadj * m_ghc_fall;
+m_spring = scaleadj * m_ghc_spring;
+
+var_fall = [var(scaleadj * df_array[i].Fall_Mean) for i=1:ngroups];
+var_spring = [var(scaleadj * df_array[i].Spring_Mean) for i=1:ngroups];
+for i=1:ngroups
+    if var_fall[i] == 0 || isnan(var_fall[i])
+        var_fall[i] = mean(scaleadj * df_array[i].Fall_Mean);
+    end
+    if var_spring[i] == 0 || isnan(var_spring[i])
+        var_spring[i] = mean(scaleadj * df_array[i].Spring_Mean);
+    end
+end 
+
+
+#Estimate alpha from variance of subgroups
+alpha_fall = m_fall.^2 ./ var_fall;
+alpha_spring = m_spring.^2 ./ var_spring;
+
+
+#Compare data vs. dist
+# falldraw = rand(Gamma(alpha_est_fall[1],m_fall[1]/alpha_est_fall[1]),100)
+# pl = lineplot(sort(df_array[1].Fall_Mean,rev=true));
+
+
 
 m = DataFrame([m_spring,m_fall],[:spring, :fall]);
 alpha = DataFrame([alpha_spring,alpha_fall],[:spring, :fall])
 # p = DataFrame(convert(Matrix,alpha)./(convert(Matrix,alpha) .+ convert(Matrix,m)),[:spring, :fall])
 #convert alpha, m to c for Gamma Distribution
-c = DataFrame(convert(Matrix,alpha) ./ convert(Matrix,m), [:spring, :fall]);
+# c = DataFrame(convert(Matrix,alpha) ./ convert(Matrix,m), [:spring, :fall]);
 
 #Calculate negative binomial for each food
 #Configurations to build ksim
@@ -189,6 +219,7 @@ ltime = length(probaltvec);
 # probline_s = cumsum(kdist_s[consumertype,:]);
 # probline_s = probline_s/maximum(probline_s);
 
+
 #STILL TO DO - GET PROPORTIONAL CONTRIBUTION DATA
 reps = 1;
 nc = length(tid);
@@ -215,7 +246,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                         if sdraw < probaltvec[day];
                             # dailyreturndraw = findall(x->x>fdraw,probline_f);
                             # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],c[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -228,7 +259,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                         else 
                             # dailyreturndraw = findall(x->x>fdraw,probline_s);
                             # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],c[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -243,7 +274,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                         if sdraw < probaltvec[day];
                             # dailyreturndraw = findall(x->x>fdraw,probline_s);
                             # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],c[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -256,7 +287,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                         else 
                             # dailyreturndraw = findall(x->x>fdraw,probline_f);
                             # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],c[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -368,10 +399,13 @@ end
 ranked = sortperm(evecs[:,2]);
 
 ecluster = eigencluster(collect(1:nc),evecs,3);
-resnames = ["GEN";df_id];
+
+mdf_id = [string(df_id[i],"_",Int64(floor(mean([m_fall[i],m_spring[i]])))) for i=1:nr]
+
+resnames = ["GEN";mdf_id];
 # TO compare with tinfo
 # rn = rdata[!,:kartez];
-rn = df_id;
+rn = mdf_id;
 
 # scatterplot(evecs[:,2],evecs[:,3])
 
@@ -395,7 +429,7 @@ for (i in 1:length($tid)) {
 pdf($namespace,width=6,height=6)
 plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
 points($(evecs[:,2][1]),$(evecs[:,3][1]),pch=21,bg=palalpha[1],col=palalpha[1])
-legend(0.8,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+legend(0.6,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
 dev.off()
 """
 
@@ -418,7 +452,7 @@ for (i in 1:length($tid)) {
 pdf($namespace,width=6,height=6)
 plot($(scaled_evecs[:,2]),$(scaled_evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
 points($(scaled_evecs[:,2][1]),$(scaled_evecs[:,3][1]),pch=21,bg=palalpha[1],col=palalpha[1])
-legend(0.8,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+legend(0.6,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
 dev.off()
 """
 
@@ -466,7 +500,7 @@ for (i in 1:length($tid)) {
 pdf($namespace,width=6,height=6)
 plot($(scaled_evecs[:,3]),$(scaled_evecs[:,4]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
 points($(scaled_evecs[:,3][1]),$(scaled_evecs[:,4][1]),pch=21,bg=palalpha[1],col=palalpha[1])
-legend(0.8,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+legend(0.3,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
 dev.off()
 """
 
@@ -500,11 +534,11 @@ namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/efitnesseigen
 R"""
 library(RColorBrewer)
 fitness = floor($((fitness)) * 100)
-fitleg = seq(10,100,10)
+fitleg = seq(10,max(fitness),length.out=5)
 pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness))
 pdf($namespace,width=6,height=6)
 plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=pal[fitness],col=pal[fitness],xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3')
-legend(0.10,0.0,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
+legend(0.6,0.6,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
 dev.off()
 """
 
@@ -513,11 +547,11 @@ namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/efitnesseigen
 R"""
 library(RColorBrewer)
 fitness = floor($((fitness)) * 100)
-fitleg = seq(1,max(fitness),10)
+fitleg = seq(1,max(fitness),length.out=5)
 pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness))
 pdf($namespace,width=6,height=6)
 plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=pal[fitness],col=pal[fitness],xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4')
-legend(0.10,0.0,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
+legend(0.4,0.6,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
 dev.off()
 """
 
@@ -527,11 +561,11 @@ namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
-fitleg = seq(10,100,10)
+fitleg = seq(10,max(fitness_nitro),length.out=5)
 pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness_nitro))
 pdf($namespace,width=6,height=6)
 plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=pal[fitness_nitro],col=pal[fitness_nitro],xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3')
-legend(0.10,0.0,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
+legend(0.6,0.6,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
 dev.off()
 """
 
@@ -540,11 +574,11 @@ namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
-fitleg = seq(1,max(fitness),10)
+fitleg = seq(1,max(fitness_nitro),length.out=5)
 pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness_nitro))
 pdf($namespace,width=6,height=6)
 plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=pal[fitness_nitro],col=pal[fitness_nitro],xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4')
-legend(0.10,0.0,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
+legend(0.4,0.6,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
 dev.off()
 """
 

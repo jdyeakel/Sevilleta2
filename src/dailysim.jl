@@ -1,12 +1,13 @@
-function dailysim(nr,alpha,c,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,target)
+function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,target)
         
     alpha = Array(alpha);
-    c = Array(c);
+    # c = Array(c);
+    m = Array(m);
     #Negative binomial parameters
-    r = alpha;
-    p = c ./ (c .+ 1);
+    # r = alpha;
+    # p = c ./ (c .+ 1);
 
-    gammadist = Gamma.(alpha,1 ./ c); #mean = alpha * (1/c)
+    gammadist = Gamma.(alpha, m ./ alpha); #mean = alpha * (1/c)
 
 
     # probability = SharedArray{Float64}(length(tid),kmax+1);
