@@ -147,6 +147,8 @@ scaleadj = mscale*perchect;
 m_fall = scaleadj * m_ghc_fall;
 m_spring = scaleadj * m_ghc_spring;
 
+#Revising estimates of variance = 0 or variance = NaN
+#Right now, I'm just saying variance = mean in these cases! 4/6/2021
 var_fall = [var(scaleadj * df_array[i].Fall_Mean) for i=1:ngroups];
 var_spring = [var(scaleadj * df_array[i].Spring_Mean) for i=1:ngroups];
 for i=1:ngroups
@@ -221,7 +223,7 @@ ltime = length(probaltvec);
 
 
 #STILL TO DO - GET PROPORTIONAL CONTRIBUTION DATA
-reps = 1;
+reps = 20;
 nc = length(tid);
 ns = SharedArray{Float64}(reps,nc,ltime);
 cvec = SharedArray{Float64}(reps,nc,nr*ltime);
@@ -232,7 +234,7 @@ nrt2 = Int64(floor(ltime/7)*nr);
 cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
 
 
-@sync @distributed for i=1:nc
+@time @sync @distributed for i=1:nc
     consumertype = i;
     for r=1:reps
         let day = 0, week = 0
@@ -409,6 +411,10 @@ rn = mdf_id;
 
 # scatterplot(evecs[:,2],evecs[:,3])
 
+#what is the relationship between nitro fitness and mean availability?
+pl = scatterplot(repeat(m_spring,inner=3),fitness_nitro[2:22])
+scatterplot!(pl,repeat(m_fall,inner=3),fitness_nitro[2:22])
+
 
 namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_2_3.pdf";
 R"""
@@ -427,9 +433,10 @@ for (i in 1:length($tid)) {
     }
 }
 pdf($namespace,width=6,height=6)
-plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
-points($(evecs[:,2][1]),$(evecs[:,3][1]),pch=21,bg=palalpha[1],col=palalpha[1])
-legend(0.6,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=palalpha,col='black',xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3',cex=2) #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
+points($(evecs[:,2][1]),$(evecs[:,3][1]),pch=21,bg=palalpha[1],col='black',cex=2)
+# legend(0.6,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+legend(-1,0.55,legend=$(resnames),pch=21,pt.bg=palalpha[legvec],col='black',bty='n',pt.cex=2)
 dev.off()
 """
 
@@ -458,7 +465,6 @@ dev.off()
 
 
 namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_3_4.pdf";
-
 R"""
 library(RColorBrewer)
 pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
@@ -475,9 +481,10 @@ for (i in 1:length($tid)) {
     }
 }
 pdf($namespace,width=6,height=6)
-plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4')
-points($(evecs[:,3][1]),$(evecs[:,4][1]),pch=21,bg=palalpha[1],col=palalpha[1])
-legend(0.4,0.6,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=palalpha,col='black',xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4',cex=2)
+points($(evecs[:,3][1]),$(evecs[:,4][1]),pch=21,bg=palalpha[1],col='black',cex=2)
+# legend(0.4,0.6,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+legend(-0.7,-0.1,legend=$(resnames),pch=21,pt.bg=palalpha[legvec],col='black',bty='n',pt.cex=2)
 dev.off()
 """
 
@@ -561,11 +568,11 @@ namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
-fitleg = seq(10,max(fitness_nitro),length.out=5)
+fitleg = seq(min(fitness_nitro),max(fitness_nitro),length.out=5)
 pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness_nitro))
 pdf($namespace,width=6,height=6)
-plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=pal[fitness_nitro],col=pal[fitness_nitro],xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3')
-legend(0.6,0.6,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
+plot($(evecs[:,2]),$(evecs[:,3]),pch=21,bg=pal[fitness_nitro],col='black',xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3',cex=2)
+legend(-1,0.5,legend=fitleg,pch=21,pt.bg=pal[fitleg],col='black',bty='n',pt.cex=2,title='CV(returns)')
 dev.off()
 """
 
@@ -574,11 +581,11 @@ namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
-fitleg = seq(1,max(fitness_nitro),length.out=5)
+fitleg = seq(min(fitness_nitro),max(fitness_nitro),length.out=5)
 pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness_nitro))
 pdf($namespace,width=6,height=6)
-plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=pal[fitness_nitro],col=pal[fitness_nitro],xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4')
-legend(0.4,0.6,legend=fitleg,pch=16,col=pal[fitleg],cex=1,bty='n',pt.cex=1,title='CV(returns)')
+plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=pal[fitness_nitro],col='black',xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4',cex=2)
+legend(-0.7,-0.1,legend=fitleg,pch=21,pt.bg=pal[fitleg],col='black',bty='n',pt.cex=2,title='CV(nitrogen)')
 dev.off()
 """
 
