@@ -3,6 +3,8 @@ using CSV
 using UnicodePlots
 using Distributed
 using RCall
+using Combinatorics
+using MultivariateStats
 
 @everywhere using ProgressMeter
 @everywhere using Distributions
@@ -13,6 +15,7 @@ using RCall
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/probaltcalc.jl")
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/ksim.jl")
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/dailysim.jl")
+@everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/dailysimcomb.jl")
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/laplacian.jl")
 @everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/eigencluster.jl")
 
@@ -26,7 +29,7 @@ mass = 100.; #mass of rodent
 # m_ghc_spring = [9920,1240,620,78,3400]; #s
 
 #Load in empirical data
-rdata = CSV.read("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/rdata2.csv",header=true);
+rdata = CSV.read("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/rdata2.csv",header=true,DataFrame);
 rdata[!,:Fall_Mean] .+= 1;
 rdata[!,:Spring_Mean] .+= 1;
 rdata[!,:Fall_SD] .+= 1;
@@ -85,26 +88,27 @@ nconc_sd = [std(df_array[i].Mean_N[findall(!ismissing,df_array[i].Mean_N)]) for 
 
 #number of resources
 nr = length(m_ghc_fall);
-# alpha_fall = repeat([10.],outer=nr);
-# alpha_spring = repeat([10.],outer=nr);
-# alphaseasons = DataFrame([alpha_spring,alpha_fall],[:spring, :fall]);
 
 
-# #poor - rich
-# # p_r_mscale = [0.00002,0.0001]; #./ 3;
+#Targeting range
+# targetvalues = [0.5,0.75,1.0]; #0.5,0.75,0.9
+targetvalues = collect(0.1:0.1:1.0);
+tid = [0;repeat(collect(1:nr),inner=(length(targetvalues),1))];
+tweight = [0;repeat(targetvalues,outer=(nr,1))];
+tinfo = Tuple([tid,tweight]);
+
+#Alternative targeting for sets
+# targetvalues = collect(0.5:0.25:1.0);
+# orders = collect(combinations(collect(1:nr)));
+# tid = [0;repeat(orders,inner=(length(targetvalues),1))];
+# tweight = [0;repeat(targetvalues,outer=(length(orders),1))];
+# tinfo = Tuple([tid,tweight]);
 
 # #kilojoules per gram
 res_kjg = repeat([mean([15.0,21.0,15.0,21.0,25.0])],outer=nr);
 
 # #Percent digestible
 epsilon = repeat([mean([0.33,0.75,0.25,0.75,0.77])],outer=nr);
-
-#Targeting range
-# targetvalues = [0.5,0.75,1.0]; #0.5,0.75,0.9
-targetvalues = collect(0.5:0.25:1.0);
-tid = [0;repeat(collect(1:nr),inner=(length(targetvalues),1))];
-tweight = [0;repeat(targetvalues,outer=(nr,1))];
-tinfo = Tuple([tid,tweight]);
 
 
 #Coefficient is for mass in KG, so convert to g/1000
@@ -184,7 +188,8 @@ configurations = 100000;
 max_enc = 50;
 kmax = max_enc+1;
 
-catchsuccess = 0.1;
+#Currently not utilized (if set to 1)
+catchsuccess = 1.0;
 
 #ksimulation distribution
 # kdist_s,kinfo_s,tout_s,propres_s = ksim(nr,alpha[!,:spring],c[!,:spring],ht,catchsuccess,res_kjg,epsilon,velocity,kmax,tmax_bout,configurations,tid,tweight);
@@ -223,7 +228,7 @@ ltime = length(probaltvec);
 
 
 #STILL TO DO - GET PROPORTIONAL CONTRIBUTION DATA
-reps = 20;
+reps = 10;
 nc = length(tid);
 ns = SharedArray{Float64}(reps,nc,ltime);
 cvec = SharedArray{Float64}(reps,nc,nr*ltime);
@@ -249,6 +254,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                             # dailyreturndraw = findall(x->x>fdraw,probline_f);
                             # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
                             drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -262,6 +268,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                             # dailyreturndraw = findall(x->x>fdraw,probline_s);
                             # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
                             drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -277,6 +284,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                             # dailyreturndraw = findall(x->x>fdraw,probline_s);
                             # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
                             drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            # drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -290,6 +298,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                             # dailyreturndraw = findall(x->x>fdraw,probline_f);
                             # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
                             drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            # drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -397,26 +406,81 @@ for i = 1:size(scaled_evecs)[2]
     scaled_evecs[:,i] = evecs[:,i] ./ evalues[i];
 end
 
-
 ranked = sortperm(evecs[:,2]);
-
 ecluster = eigencluster(collect(1:nc),evecs,3);
 
+#Identifiers
 mdf_id = [string(df_id[i],"_",Int64(floor(mean([m_fall[i],m_spring[i]])))) for i=1:nr]
-
 resnames = ["GEN";mdf_id];
 # TO compare with tinfo
 # rn = rdata[!,:kartez];
 rn = mdf_id;
 
-# scatterplot(evecs[:,2],evecs[:,3])
+
+
+# Visualize full eigenvector landscape with PHATE!
+# From Ashkaan: 
+# (1) Get eigenvectors from your diffusion map
+# (2) Calculate pairwise distances in diffusion space
+# (3) Perform principal coordinates analysis on diffusion distances
+
+# Pairwise distances
+pdist = Distances.pairwise(Euclidean(),evecs[:,2:10],dims=1);
+pcafit = fit(PCA,pdist; maxoutdim=2)
+tpdist = MultivariateStats.transform(pcafit, pdist)
+scatterplot(tpdist[1,:],tpdist[2,:])
+#NOTE: we get different results for scaled_evecs vs. evecs
+
+#And plot!
+R"""
+library(RColorBrewer)
+fitness_nitro = floor($((fitness_nitro)) * 100)
+fitleg = seq(min(fitness_nitro),max(fitness_nitro),length.out=5)
+pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness_nitro))
+plot($(tpdist[1,:]),$(tpdist[2,:]),col=pal,pch=16)
+"""
+
+R"""
+pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
+alphaw = $tweight*100
+alphaw[1] = 100;
+palalpha = numeric(length($tid))
+legvec = numeric(0)
+for (i in 1:length($tid)) {
+    if (alphaw[i] < 100) {
+        palalpha[i] = paste(pal[($tid+1)][i],alphaw[i],sep='')
+    } else {
+        palalpha[i] = pal[($tid+1)][i]
+        legvec = c(legvec,i)
+    }
+}
+plot($(tpdist[1,:]),$(tpdist[2,:]),col=palalpha,pch=16,cex=1.5)
+"""
+
+
+
+
+
+
+
+
+
+
+
+
 
 #what is the relationship between nitro fitness and mean availability?
 pl = scatterplot(repeat(m_spring,inner=3),fitness_nitro[2:22])
 scatterplot!(pl,repeat(m_fall,inner=3),fitness_nitro[2:22])
 
+#### OLD PLOTS ####
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_2_3.pdf";
+# scatterplot(evecs[:,2],evecs[:,3])
+
+
+
+
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_2_3_many.pdf";
 R"""
 library(RColorBrewer)
 pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
@@ -440,31 +504,31 @@ legend(-1,0.55,legend=$(resnames),pch=21,pt.bg=palalpha[legvec],col='black',bty=
 dev.off()
 """
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_scaled_2_3.pdf";
-R"""
-library(RColorBrewer)
-pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
-alphaw = $tweight*100
-alphaw[1] = 100;
-palalpha = numeric(length($tid))
-legvec = numeric(0)
-for (i in 1:length($tid)) {
-    if (alphaw[i] < 100) {
-        palalpha[i] = paste(pal[($tid+1)][i],alphaw[i],sep='')
-    } else {
-        palalpha[i] = pal[($tid+1)][i]
-        legvec = c(legvec,i)
-    }
-}
-pdf($namespace,width=6,height=6)
-plot($(scaled_evecs[:,2]),$(scaled_evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
-points($(scaled_evecs[:,2][1]),$(scaled_evecs[:,3][1]),pch=21,bg=palalpha[1],col=palalpha[1])
-legend(0.6,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
-dev.off()
-"""
+# namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_scaled_2_3.pdf";
+# R"""
+# library(RColorBrewer)
+# pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
+# alphaw = $tweight*100
+# alphaw[1] = 100;
+# palalpha = numeric(length($tid))
+# legvec = numeric(0)
+# for (i in 1:length($tid)) {
+#     if (alphaw[i] < 100) {
+#         palalpha[i] = paste(pal[($tid+1)][i],alphaw[i],sep='')
+#     } else {
+#         palalpha[i] = pal[($tid+1)][i]
+#         legvec = c(legvec,i)
+#     }
+# }
+# pdf($namespace,width=6,height=6)
+# plot($(scaled_evecs[:,2]),$(scaled_evecs[:,3]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
+# points($(scaled_evecs[:,2][1]),$(scaled_evecs[:,3][1]),pch=21,bg=palalpha[1],col=palalpha[1])
+# legend(0.6,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+# dev.off()
+# """
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_3_4.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_3_4_many.pdf";
 R"""
 library(RColorBrewer)
 pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
@@ -488,52 +552,52 @@ legend(-0.7,-0.1,legend=$(resnames),pch=21,pt.bg=palalpha[legvec],col='black',bt
 dev.off()
 """
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_scaled_3_4.pdf";
-R"""
-library(RColorBrewer)
-pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
-alphaw = $tweight*100
-alphaw[1] = 100;
-palalpha = numeric(length($tid))
-legvec = numeric(0)
-for (i in 1:length($tid)) {
-    if (alphaw[i] < 100) {
-        palalpha[i] = paste(pal[($tid+1)][i],alphaw[i],sep='')
-    } else {
-        palalpha[i] = pal[($tid+1)][i]
-        legvec = c(legvec,i)
-    }
-}
-pdf($namespace,width=6,height=6)
-plot($(scaled_evecs[:,3]),$(scaled_evecs[:,4]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
-points($(scaled_evecs[:,3][1]),$(scaled_evecs[:,4][1]),pch=21,bg=palalpha[1],col=palalpha[1])
-legend(0.3,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
-dev.off()
-"""
+# namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/consumereigen_scaled_3_4.pdf";
+# R"""
+# library(RColorBrewer)
+# pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
+# alphaw = $tweight*100
+# alphaw[1] = 100;
+# palalpha = numeric(length($tid))
+# legvec = numeric(0)
+# for (i in 1:length($tid)) {
+#     if (alphaw[i] < 100) {
+#         palalpha[i] = paste(pal[($tid+1)][i],alphaw[i],sep='')
+#     } else {
+#         palalpha[i] = pal[($tid+1)][i]
+#         legvec = c(legvec,i)
+#     }
+# }
+# pdf($namespace,width=6,height=6)
+# plot($(scaled_evecs[:,3]),$(scaled_evecs[:,4]),pch=21,bg=palalpha,col=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3') #,xlim=c(-0.2,0.2),ylim=c(-0.2,0.2)
+# points($(scaled_evecs[:,3][1]),$(scaled_evecs[:,4][1]),pch=21,bg=palalpha[1],col=palalpha[1])
+# legend(0.3,0.5,legend=$(resnames),pch=16,col=palalpha[legvec],cex=0.45,bty='n',pt.cex=1.5) #pal[($tid+1)]
+# dev.off()
+# """
 
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/consumer_ensilica_DM3D2.pdf";
-R"""
-library(scatterplot3d) 
-library(RColorBrewer)
-pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
-alphaw = $tweight*100
-alphaw[1] = 100;
-palalpha = numeric(length($tid))
-legvec = numeric(0)
-for (i in 1:length($tid)) {
-    if (alphaw[i] < 100) {
-        palalpha[i] = paste(pal[($tid+1)][i],alphaw[i],sep='')
-    } else {
-        palalpha[i] = pal[($tid+1)][i]
-        legvec = c(legvec,i)
-    }
-}
-pdf($namespace,height=6,width=6)
-s3d = scatterplot3d(x=cbind($(evecs[:,2]),$(evecs[:,3]),$(evecs[:,4])),pch=16,color=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3',zlab='Laplacian eigenvec 4',scale.y=0.9,angle=70,type='h')
-dev.off()
-"""
+# namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/consumer_ensilica_DM3D2.pdf";
+# R"""
+# library(scatterplot3d) 
+# library(RColorBrewer)
+# pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
+# alphaw = $tweight*100
+# alphaw[1] = 100;
+# palalpha = numeric(length($tid))
+# legvec = numeric(0)
+# for (i in 1:length($tid)) {
+#     if (alphaw[i] < 100) {
+#         palalpha[i] = paste(pal[($tid+1)][i],alphaw[i],sep='')
+#     } else {
+#         palalpha[i] = pal[($tid+1)][i]
+#         legvec = c(legvec,i)
+#     }
+# }
+# pdf($namespace,height=6,width=6)
+# s3d = scatterplot3d(x=cbind($(evecs[:,2]),$(evecs[:,3]),$(evecs[:,4])),pch=16,color=palalpha,xlab='Laplacian eigenvec 2',ylab='Laplacian eigenvec 3',zlab='Laplacian eigenvec 4',scale.y=0.9,angle=70,type='h')
+# dev.off()
+# """
 
 
 
@@ -564,7 +628,7 @@ dev.off()
 
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen_2_3.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen_2_3_many.pdf";
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
@@ -577,7 +641,7 @@ dev.off()
 """
 
 
-namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen_3_4.pdf";
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen_3_4_many.pdf";
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
@@ -588,6 +652,20 @@ plot($(evecs[:,3]),$(evecs[:,4]),pch=21,bg=pal[fitness_nitro],col='black',xlab='
 legend(-0.7,-0.1,legend=fitleg,pch=21,pt.bg=pal[fitleg],col='black',bty='n',pt.cex=2,title='CV(nitrogen)')
 dev.off()
 """
+
+
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/nfitnesseigen_4_5_many.pdf";
+R"""
+library(RColorBrewer)
+fitness_nitro = floor($((fitness_nitro)) * 100)
+fitleg = seq(min(fitness_nitro),max(fitness_nitro),length.out=5)
+pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness_nitro))
+pdf($namespace,width=6,height=6)
+plot($(evecs[:,4]),$(evecs[:,5]),pch=21,bg=pal[fitness_nitro],col='black',xlab='Laplacian eigenvec 3',ylab='Laplacian eigenvec 4',cex=2)
+legend(-0.7,-0.1,legend=fitleg,pch=21,pt.bg=pal[fitleg],col='black',bty='n',pt.cex=2,title='CV(nitrogen)')
+dev.off()
+"""
+
 
 
 
@@ -641,3 +719,4 @@ p <- plot_ly(df, x = ~ev2, y = ~ev3, z = ~ev4,
                      zaxis = list(title = 'ev4')),
          annotations = F)
 """
+
