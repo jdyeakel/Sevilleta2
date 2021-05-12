@@ -92,7 +92,7 @@ nr = length(m_ghc_fall);
 
 #Targeting range
 # targetvalues = [0.5,0.75,1.0]; #0.5,0.75,0.9
-targetvalues = collect(0.1:0.1:1.0);
+targetvalues = collect(0.1:0.05:1.0);
 tid = [0;repeat(collect(1:nr),inner=(length(targetvalues),1))];
 tweight = [0;repeat(targetvalues,outer=(nr,1))];
 tinfo = Tuple([tid,tweight]);
@@ -284,7 +284,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                             # dailyreturndraw = findall(x->x>fdraw,probline_s);
                             # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
                             drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            # drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -298,7 +298,7 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                             # dailyreturndraw = findall(x->x>fdraw,probline_f);
                             # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
                             drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            # drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
                             dailyreturn[r,i,day] = drdraw;
                             dailynitrogen[r,i,day] = dndraw;
                             if sum(propres) > 0
@@ -425,21 +425,32 @@ rn = mdf_id;
 # (3) Perform principal coordinates analysis on diffusion distances
 
 # Pairwise distances
-pdist = Distances.pairwise(Euclidean(),evecs[:,2:10],dims=1);
+pdist = Distances.pairwise(Euclidean(),scaled_evecs[:,2:10],dims=1);
 pcafit = fit(PCA,pdist; maxoutdim=2)
 tpdist = MultivariateStats.transform(pcafit, pdist)
 scatterplot(tpdist[1,:],tpdist[2,:])
 #NOTE: we get different results for scaled_evecs vs. evecs
 
+dfout = DataFrame(tpdist',[:pca1,:pca2]);
+insert!(dfout,3,fitness_nitro,:fitness)
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/data/scaled_eigenvecs.csv";
+CSV.write(namespace,  dfout, writeheader=false)
+
+
 #And plot!
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/fig_fitnessmanifold.pdf";
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
 fitleg = seq(min(fitness_nitro),max(fitness_nitro),length.out=5)
 pal = colorRampPalette(brewer.pal(11,"Spectral"))(max(fitness_nitro))
-plot($(tpdist[1,:]),$(tpdist[2,:]),col=pal,pch=16)
+pdf($namespace,width=6,height=6)
+plot($(tpdist[1,:]),$(tpdist[2,:]),col=pal[fitness_nitro],pch=16,cex=1.5)
+legend(-3,3,legend=fitleg,pch=21,pt.bg=pal[fitleg],col='black',bty='n',pt.cex=2,title='CV(nitrogen)')
+dev.off()
 """
 
+namespace = "$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/fig_dietmanifold.pdf";
 R"""
 pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
 alphaw = $tweight*100
@@ -454,7 +465,10 @@ for (i in 1:length($tid)) {
         legvec = c(legvec,i)
     }
 }
+pdf($namespace,width=6,height=6)
 plot($(tpdist[1,:]),$(tpdist[2,:]),col=palalpha,pch=16,cex=1.5)
+legend(-3,3,legend=$(resnames),pch=21,pt.bg=palalpha[legvec],col='black',bty='n',pt.cex=2)
+dev.off()
 """
 
 
