@@ -1,23 +1,10 @@
-using DataFrames
-using CSV
-using UnicodePlots
-using Distributed
-using RCall
-using Combinatorics
-using MultivariateStats
+if homedir() == "/home/z840"
+    loadfunc = include("$(homedir())/Sevilleta2/src/loadfuncs.jl");
+else
+    loadfunc = include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/loadfuncs.jl");
+end
 
-@everywhere using ProgressMeter
-@everywhere using Distributions
-@everywhere using SharedArrays
-@everywhere using LinearAlgebra
-@everywhere using Arpack
-@everywhere using Distances
-@everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/probaltcalc.jl")
-@everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/ksim.jl")
-@everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/dailysim.jl")
-@everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/dailysimcomb.jl")
-@everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/laplacian.jl")
-@everywhere include("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/src/eigencluster.jl")
+
 
 
 
@@ -34,7 +21,7 @@ mass = 100.; #mass of rodent
 # m_ghc_spring = [9920,1240,620,78,3400]; #s
 
 #Load in empirical data
-rdata = CSV.read("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/rdata2.csv",header=true,DataFrame);
+rdata = CSV.read(smartpath("rdata2.csv"),header=true,DataFrame);
 rdata[!,:Fall_Mean] .+= 1;
 rdata[!,:Spring_Mean] .+= 1;
 rdata[!,:Fall_SD] .+= 1;
@@ -448,7 +435,7 @@ scatterplot(tpdist[1,:],tpdist[2,:])
 
 dfout = DataFrame(tpdist',[:pca1,:pca2]);
 insert!(dfout,3,fitness_nitro,:fitness)
-namespace = string("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/data/scaled_eigenvecs_",fileappend,".csv");
+namespace = smartpath(string("data/scaled_eigenvecs_",fileappend,".csv"));
 CSV.write(namespace,  dfout, writeheader=false)
 
 # deigen = CSV.read(namespace,header=false, DataFrame);
@@ -456,8 +443,8 @@ CSV.write(namespace,  dfout, writeheader=false)
 # fitness_nitro = Array(deigen[:,3]);
 
 
-
-namespace = string("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/fig_dietmanifold_",fileappend,".pdf");
+namespace = smartpath(string("figures2/fig_dietmanifold_",fileappend,".pdf"));
+# string("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/fig_dietmanifold_",fileappend,".pdf");
 R"""
 library(RColorBrewer)
 pal = c('black',colorRampPalette(brewer.pal(9,"Set1"))(max($tid)))
@@ -496,7 +483,7 @@ dev.off()
 
 
 #And plot!
-namespace = string("$(homedir())/Dropbox/PostDoc/2020_Sevilleta2/figures2/fig_fitnessmanifold_",fileappend,".pdf");
+namespace = smartpath(string("figures2/fig_fitnessmanifold_",fileappend,".pdf"));
 R"""
 library(RColorBrewer)
 fitness_nitro = floor($((fitness_nitro)) * 100)
