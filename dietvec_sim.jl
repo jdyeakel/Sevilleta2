@@ -9,7 +9,7 @@ end
 
 
 #NOTE: NAME FILE APPENDIX
-fileappend = "sigma1_r1000b";
+fileappend = "sigma1_r1000a_4wks";
 
 
 mass = 100.; #mass of rodent
@@ -232,7 +232,7 @@ cvec = SharedArray{Float64}(reps,nc,nr*ltime);
 dailyreturn = SharedArray{Float64}(reps,nc,ltime);
 dailynitrogen = SharedArray{Float64}(reps,nc,ltime);
 nrt = nr*ltime;
-timespan = 7*2;
+timespan = 7*4;
 nrt2 = Int64(floor(ltime/timespan)*nr);
 cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
 
