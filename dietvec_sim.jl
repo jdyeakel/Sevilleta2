@@ -434,7 +434,8 @@ scatterplot(tpdist[1,:],tpdist[2,:])
 #NOTE: we get different results for scaled_evecs vs. evecs
 
 dfout = DataFrame(tpdist',[:pca1,:pca2]);
-insert!(dfout,3,fitness_nitro,:fitness)
+dfout[!,:fitness] = fitness_nitro;
+# insert!(dfout,3,fitness_nitro,:fitness)
 namespace = smartpath(string("data/scaled_eigenvecs_",fileappend,".csv"));
 CSV.write(namespace,  dfout, writeheader=false)
 
