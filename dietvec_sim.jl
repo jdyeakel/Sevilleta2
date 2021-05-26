@@ -9,7 +9,7 @@ end
 
 
 #NOTE: NAME FILE APPENDIX
-fileappend = "sigma1_r1000a_4wks";
+fileappend = "sigma1_r1000b_4wks";
 
 
 mass = 100.; #mass of rodent
