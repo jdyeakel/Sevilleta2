@@ -232,8 +232,8 @@ cvec = SharedArray{Float64}(reps,nc,nr*ltime);
 dailyreturn = SharedArray{Float64}(reps,nc,ltime);
 dailynitrogen = SharedArray{Float64}(reps,nc,ltime);
 nrt = nr*ltime;
-span = 7*2;
-nrt2 = Int64(floor(ltime/span)*nr);
+timespan = 7*2;
+nrt2 = Int64(floor(ltime/timespan)*nr);
 cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
 
 
@@ -309,11 +309,11 @@ cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
                         end
                     end
                     #Build average cvec matrix
-                    if mod(day,span) == 0
+                    if mod(day,timespan) == 0
                         week += 1;
                         windex = (week-1)*nr + 1;
                         # because we are taking means, sum will not be 1
-                        weekly_pctd = vec(mean(reshape(cvec[r,i,rindex-(nr*(span-1)):(rindex+nr-1)],nr,span)',dims=1));
+                        weekly_pctd = vec(mean(reshape(cvec[r,i,rindex-(nr*(timespan-1)):(rindex+nr-1)],nr,timespan)',dims=1));
                         # Normalize to sum to 1
                         # norm_weekly_pctd = weekly_pctd ./ sum(weekly_pctd);
                         cvec_wks[r,i,windex:(windex+nr-1)] = weekly_pctd;
