@@ -23,6 +23,7 @@ By relating the fitness consequences of simulated strategies occupying different
 The resultant fitness landscape assessed along the niche manifold can thus be used to evaluate and ultimately predict life history characteristics of consumers foraging in natural systems.
 Thus, by incorporating foraging data and estimates of fitness from Sevilleta consumers alongside those simulated within the context of the niche manifold, we will directly assess the predictive value of the manifold niche concept in a natural community.
 
+
 ## A simple foraging null model to define consumer strategies
 
 We present a minimal consumer foraging model to illustrate how our framework can be used to uncover a simulated consumer's niche manifold -- which we will identify using diffusion mapping techniques -- and treat this as a null expectation by which we will subsequently evaluate empirical consumer strategies.
@@ -75,9 +76,11 @@ We would first note that the consumer is targeting C4 annual forbs, but that its
 Moreover, our foraging model predicts a fitness gradient with respect to this resource group, where increased specialization is expected to increase fitness, whereas increased reliance on opportunistic foraging decreases fitness (arrows).
 Integrating individual-level ontogenetic information (Section xx) will allow us to directly assess the accuracy of this prediction.
 
+
 ## Confronting more realistic models with data (things to do)
 
 While the simple foraging model that we describe here provides a useful heuristic for describing our approach, we additionally intend to incorporate modelling frameworks that include more realistic physical and biological constraints, which can be either combined to form a larger strategy-niche manifold or assessed independently.
 For example, we intend to adapt a consumer foraging model described in Yeakel et al. (2020), where we use fitness maximization principles and stochastic dynamic programming to establish consumer strategies in environments with seasonal uncertainty.
 In this case, our framework directly incorporates consumer energetic constraints, caching behaviors, and state-dependent foraging strategies, from which fitness is directly estimated.
 Using more complex models such as this, in tandem with the simpler mechanics of the model described here, will not only enlarge our perspective of the universe of potential foraging strategies, but also enable us to pinpoint which biological and/or physical constraints play larger or smaller roles in driving consumer behaviors.
+

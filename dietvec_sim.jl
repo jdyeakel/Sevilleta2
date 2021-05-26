@@ -236,93 +236,98 @@ timespan = 7*2;
 nrt2 = Int64(floor(ltime/timespan)*nr);
 cvec_wks = SharedArray{Float64}(reps,nc,nrt2);
 
+# NOTE: could speed up by combining nc and reps into one loop
+ncr_paramvec = [repeat(collect(1:nc),inner=reps) repeat(collect(1:reps),outer=nc)];
+its = reps*nc;
 
-@time @sync @distributed for i=1:nc
+@time @sync @distributed for ii=1:its
+    i = ncr_paramvec[ii,1];
+    r = ncr_paramvec[ii,2];
     consumertype = i;
-    for r=1:reps
-        let day = 0, week = 0
-            for s = 1:smax
-                for t=1:tmax
-                    day += 1;
-                    rindex = (day-1)*nr + 1;
-                    sdraw = rand();
-                    fdraw = rand();
-                    if cycle[s] == "fall"
-                        if sdraw < probaltvec[day];
-                            # dailyreturndraw = findall(x->x>fdraw,probline_f);
-                            # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            dailyreturn[r,i,day] = drdraw;
-                            dailynitrogen[r,i,day] = dndraw;
-                            if sum(propres) > 0
-                                pctd = propres./sum(propres);
-                            else
-                                pctd = repeat([0.0],outer=nr);
-                            end
-                            cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
-                            ns[r,i,day] = sum(numsuccess);
-                        else 
-                            # dailyreturndraw = findall(x->x>fdraw,probline_s);
-                            # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            dailyreturn[r,i,day] = drdraw;
-                            dailynitrogen[r,i,day] = dndraw;
-                            if sum(propres) > 0
-                                pctd = propres./sum(propres);
-                            else
-                                pctd = repeat([0.0],outer=nr);
-                            end
-                            cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
-                            ns[r,i,day] = sum(numsuccess);
+    # for r=1:reps
+    let day = 0, week = 0
+        for s = 1:smax
+            for t=1:tmax
+                day += 1;
+                rindex = (day-1)*nr + 1;
+                sdraw = rand();
+                fdraw = rand();
+                if cycle[s] == "fall"
+                    if sdraw < probaltvec[day];
+                        # dailyreturndraw = findall(x->x>fdraw,probline_f);
+                        # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
+                        drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        dailyreturn[r,i,day] = drdraw;
+                        dailynitrogen[r,i,day] = dndraw;
+                        if sum(propres) > 0
+                            pctd = propres./sum(propres);
+                        else
+                            pctd = repeat([0.0],outer=nr);
                         end
-                    else
-                        if sdraw < probaltvec[day];
-                            # dailyreturndraw = findall(x->x>fdraw,probline_s);
-                            # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            dailyreturn[r,i,day] = drdraw;
-                            dailynitrogen[r,i,day] = dndraw;
-                            if sum(propres) > 0
-                                pctd = propres./sum(propres);
-                            else
-                                pctd = repeat([0.0],outer=nr);
-                            end
-                            cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
-                            ns[r,i,day] = sum(numsuccess);
-                        else 
-                            # dailyreturndraw = findall(x->x>fdraw,probline_f);
-                            # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
-                            drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
-                            dailyreturn[r,i,day] = drdraw;
-                            dailynitrogen[r,i,day] = dndraw;
-                            if sum(propres) > 0
-                                pctd = propres./sum(propres);
-                            else
-                                pctd = repeat([0.0],outer=nr);
-                            end
-                            cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
-                            ns[r,i,day] = sum(numsuccess);
+                        cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
+                        ns[r,i,day] = sum(numsuccess);
+                    else 
+                        # dailyreturndraw = findall(x->x>fdraw,probline_s);
+                        # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
+                        drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        dailyreturn[r,i,day] = drdraw;
+                        dailynitrogen[r,i,day] = dndraw;
+                        if sum(propres) > 0
+                            pctd = propres./sum(propres);
+                        else
+                            pctd = repeat([0.0],outer=nr);
                         end
+                        cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
+                        ns[r,i,day] = sum(numsuccess);
                     end
-                    #Build average cvec matrix
-                    if mod(day,timespan) == 0
-                        week += 1;
-                        windex = (week-1)*nr + 1;
-                        # because we are taking means, sum will not be 1
-                        weekly_pctd = vec(mean(reshape(cvec[r,i,rindex-(nr*(timespan-1)):(rindex+nr-1)],nr,timespan)',dims=1));
-                        # Normalize to sum to 1
-                        # norm_weekly_pctd = weekly_pctd ./ sum(weekly_pctd);
-                        cvec_wks[r,i,windex:(windex+nr-1)] = weekly_pctd;
+                else
+                    if sdraw < probaltvec[day];
+                        # dailyreturndraw = findall(x->x>fdraw,probline_s);
+                        # dailyreturn[day] = kinfo_s[consumertype,dailyreturndraw[1]];
+                        drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:spring],m[!,:spring],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        dailyreturn[r,i,day] = drdraw;
+                        dailynitrogen[r,i,day] = dndraw;
+                        if sum(propres) > 0
+                            pctd = propres./sum(propres);
+                        else
+                            pctd = repeat([0.0],outer=nr);
+                        end
+                        cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
+                        ns[r,i,day] = sum(numsuccess);
+                    else 
+                        # dailyreturndraw = findall(x->x>fdraw,probline_f);
+                        # dailyreturn[day] = kinfo_f[consumertype,dailyreturndraw[1]];
+                        drdraw,dndraw,propres,numsuccess = dailysim(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        # drdraw,dndraw,propres,numsuccess = dailysimcomb(nr,alpha[!,:fall],m[!,:fall],ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,consumertype);
+                        dailyreturn[r,i,day] = drdraw;
+                        dailynitrogen[r,i,day] = dndraw;
+                        if sum(propres) > 0
+                            pctd = propres./sum(propres);
+                        else
+                            pctd = repeat([0.0],outer=nr);
+                        end
+                        cvec[r,i,rindex:(rindex+nr-1)] .= pctd;
+                        ns[r,i,day] = sum(numsuccess);
                     end
-
                 end
+                #Build average cvec matrix
+                if mod(day,timespan) == 0
+                    week += 1;
+                    windex = (week-1)*nr + 1;
+                    # because we are taking means, sum will not be 1
+                    weekly_pctd = vec(mean(reshape(cvec[r,i,rindex-(nr*(timespan-1)):(rindex+nr-1)],nr,timespan)',dims=1));
+                    # Normalize to sum to 1
+                    # norm_weekly_pctd = weekly_pctd ./ sum(weekly_pctd);
+                    cvec_wks[r,i,windex:(windex+nr-1)] = weekly_pctd;
+                end
+
             end
         end
     end
+    # end
 end
 
 # Either take mean of individuals or the single rep
