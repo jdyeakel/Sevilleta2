@@ -1,4 +1,4 @@
-function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,target)
+function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,configurations,tid,tweight,target,metrate)
         
     alpha = Array(alpha);
     # c = Array(c);
@@ -33,6 +33,13 @@ function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,co
     distance_to_resource = zeros(Float64,nr);
     nearest_distance = 0.0;    
 
+    #WATTS
+    basal_mr = metrate[1];
+    field_mr = metrate[2];
+
+    #Metabolic cost in watt*seconds
+    cost_ws = 0;
+
     while t < tmax_bout
         
         for i=1:nr
@@ -48,9 +55,11 @@ function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,co
         
         if rand(bernoulidist) == 0
             #The rodent will move towards the targeted resource regardless if it's the closest
-            
-            t += distance_to_resource[tid[target]]/modvelocity;
-            tdist[1] += distance_to_resource[tid[target]]/modvelocity;
+            deltat = distance_to_resource[tid[target]]/modvelocity;
+            t += deltat;
+            tdist[1] += deltat;
+
+            cost_ws += field_mr*deltat;
             
             #Obtains the resource if there is time left in tmax_bout
             if tmax_bout > (distance_to_resource[tid[target]]/modvelocity + ht[tid[target]])
@@ -58,20 +67,26 @@ function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,co
                 #If not an insect, success is gauranteed
                 if tid[target] != 5
                     number_of_successes[tid[target]] += 1;
-                    t += ht[tid[target]];
-                    thandle[1] += ht[tid[target]];
+                    deltat = ht[tid[target]];
+                    t += deltat;
+                    thandle[1] += deltat;
+                    cost_ws += field_mr*deltat;
                 #If an insect, success is not gauranteed
                 else 
                     catchinsect = rand();
                     if catchinsect < catchsuccess
                         number_of_successes[tid[target]] += 1;
-                        t += ht[tid[target]];
-                        thandle[1] += ht[tid[target]];
+                        deltat = ht[tid[target]];
+                        t += deltat;
+                        thandle[1] += deltat;
+                        cost_ws += field_mr*deltat;
                     else
                         #No success; only time cost
                         # number_of_successes[tid[target]] += 0;
-                        t += ht[tid[target]];
-                        thandle[1] += ht[tid[target]];
+                        deltat = ht[tid[target]];
+                        t += deltat;
+                        thandle[1] += deltat;
+                        cost_ws += field_mr*deltat;
                     end
                 end
                 
@@ -79,13 +94,17 @@ function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,co
         
         else
             #The rodent will move towards the closest resource
-            t += nearest_distance/modvelocity;
-            tdist[1] += nearest_distance/modvelocity;
+            deltat = nearest_distance/modvelocity;
+            t += deltat;
+            tdist[1] += deltat;
+            cost_ws += field_mr*deltat;
             
             if tmax_bout > (nearest_distance/modvelocity)
                 number_of_successes[nearest_resource] += 1;
-                t += ht[nearest_resource];
-                thandle[1] += ht[nearest_resource];
+                deltat = ht[nearest_resource];
+                t += deltat;
+                thandle[1] += deltat;
+                cost_ws += field_mr*deltat;
             end
                 
             
@@ -94,6 +113,13 @@ function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,co
         
     end
 
+    total_t = 60*60*24;
+    rest_t = total_t - t;
+    cost_ws += basal_mr*rest_t;
+
+    #Convert cost to kJ
+    cost_kj = cost_ws*0.001;
+
     total_kilojoules=dot((res_kjg),number_of_successes);
     total_nitrogen = dot(nconc,number_of_successes);
     
@@ -101,6 +127,6 @@ function dailysim(nr,alpha,m,ht,catchsuccess,res_kjg,nconc,velocity,tmax_bout,co
     propres = ((res_kjg).*number_of_successes);
     # propres = propres ./ sum(propres);
 
-    return(total_kilojoules,total_nitrogen,propres,number_of_successes);
+    return(total_kilojoules,total_nitrogen,propres,number_of_successes,cost_kj);
 
 end
